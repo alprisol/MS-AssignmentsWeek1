@@ -90,6 +90,7 @@ def animate_circular_orbit():
     frame_counter = 0
 
     while t <= simulation_time:
+
         # (a) Update the orbit angle using a simple Euler forward
         varphi += dot_varphi * time_step
 
@@ -103,7 +104,7 @@ def animate_circular_orbit():
 
         # (c) Update the satellite's pose in the scene
         update_satellite_pose(satellite_mesh, r_i, Theta_i_b_deg, degrees=True)
-        update_body_frame_pose(body_frame, r_i, Theta_i_b_deg)
+        update_body_frame_pose(body_frame, r_i, Theta_i_b_deg, degrees=True)
 
         # (d) Update Earth's rotation about its own axis at time t
         update_earth_orientation(earth_mesh, t)

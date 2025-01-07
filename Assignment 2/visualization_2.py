@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import vtk
 
-from orbital_mechanics import *
+from orbital_mechanics_2 import *
 
 # Enable LaTeX rendering and importing the xcolor package
 plt.rcParams["text.usetex"] = True
@@ -12,46 +12,20 @@ plt.rcParams["text.latex.preamble"] = r"\usepackage{xcolor}"
 earth_rot_vel = 7.2722e-5  # rad/s
 
 
-def geometry_examples():
-
-    cyl = pv.Cylinder()
-    arrow = pv.Arrow()
-    sphere = pv.Sphere()
-    plane = pv.Plane()
-    line = pv.Line()
-    box = pv.Box()
-    cone = pv.Cone()
-    poly = pv.Polygon()
-    disc = pv.Disc()
-
-    p = pv.Plotter(shape=(3, 3))
-    # Top row
-    p.subplot(0, 0)
-    p.add_mesh(cyl, color="lightblue", show_edges=True)
-    p.subplot(0, 1)
-    p.add_mesh(arrow, color="lightblue", show_edges=True)
-    p.subplot(0, 2)
-    p.add_mesh(sphere, color="lightblue", show_edges=True)
-    # Middle row
-    p.subplot(1, 0)
-    p.add_mesh(plane, color="lightblue", show_edges=True)
-    p.subplot(1, 1)
-    p.add_mesh(line, color="lightblue", line_width=3)
-    p.subplot(1, 2)
-    p.add_mesh(box, color="lightblue", show_edges=True)
-    # Bottom row
-    p.subplot(2, 0)
-    p.add_mesh(cone, color="lightblue", show_edges=True)
-    p.subplot(2, 1)
-    p.add_mesh(poly, color="lightblue", show_edges=True)
-    p.subplot(2, 2)
-    p.add_mesh(disc, color="lightblue", show_edges=True)
-    # Render all of them
-    p.show()
-
-
 def create_reference_frame(plotter, labels, scale=1):
+    """
+    Creates a 3D reference frame with labeled x, y, and z axes in a PyVista plot.
 
+    Parameters:
+        plotter (pyvista.Plotter): The PyVista plotter to add the reference frame to.
+        labels (list of str): List of labels for the x, y, and z axes.
+        scale (float, optional): Scale factor for the size of the arrows and labels. Default is 1.
+
+    Returns:
+        dict: A dictionary containing the arrow meshes and label text objects for the reference frame.
+    """
+
+    # Create an arrow mesh for the x-axis
     x_arrow = pv.Arrow(
         start=(0, 0, 0),
         direction=(1, 0, 0),
@@ -62,6 +36,8 @@ def create_reference_frame(plotter, labels, scale=1):
         shaft_resolution=20,
         scale=scale,
     )
+
+    # Create an arrow mesh for the y-axis
     y_arrow = pv.Arrow(
         start=(0, 0, 0),
         direction=(0, 1, 0),
@@ -72,6 +48,8 @@ def create_reference_frame(plotter, labels, scale=1):
         shaft_resolution=20,
         scale=scale,
     )
+
+    # Create an arrow mesh for the z-axis
     z_arrow = pv.Arrow(
         start=(0, 0, 0),
         direction=(0, 0, 1),
@@ -83,6 +61,7 @@ def create_reference_frame(plotter, labels, scale=1):
         scale=scale,
     )
 
+    # Add the arrow meshes and labels to the plotter
     reference_frame_mesh = {
         "scale": scale,
         "x": plotter.add_mesh(x_arrow, color="red", show_edges=False),
@@ -103,16 +82,23 @@ def create_reference_frame(plotter, labels, scale=1):
 
 
 def create_satellite(plotter, size=0.5):
+    """
+    Creates a 3D model of a satellite with a textured body, solar panels, and a scientific instrument.
 
-    # Satellite's body
+    Parameters:
+        plotter (pyvista.Plotter): The PyVista plotter to add the satellite to.
+        size (float, optional): Scaling factor for the satellite size. Default is 0.5.
+
+    Returns:
+        dict: A dictionary containing the meshes for the satellite body, solar panels, and scientific instrument.
+    """
+
+    # Create the satellite body with a texture
     body_texture = pv.read_texture("Assignment 1/satellite_texture.png")
     body_b = pv.Box(bounds=(-size, size, -size, size, -size, size))
-    u = np.array([0, 1, 1, 0] * 6)
-    v = np.array([0, 0, 1, 1] * 6)
-    texture_coordinates = np.c_[u, v]
     body_b.texture_map_to_plane(inplace=True)
 
-    # Solar panels
+    # Create two solar panels with textures
     solar_panel_texture = pv.read_texture(
         "Assignment 1/high_quality_solar_panel_texture.png"
     )
@@ -120,6 +106,8 @@ def create_satellite(plotter, size=0.5):
     panel_length = 5 * size
     panel_thickness = 0.1 * size
     center_offset = 0.5 * size
+
+    # Solar panel 1
     solar_panel_b_1 = pv.Box(
         bounds=(
             -panel_thickness / 2,
@@ -136,6 +124,8 @@ def create_satellite(plotter, size=0.5):
         point_v=(-size - panel_thickness / 2, 0, panel_length / 2),
         inplace=True,
     )
+
+    # Solar panel 2
     solar_panel_b_2 = pv.Box(
         bounds=(
             -panel_thickness / 2,
@@ -153,7 +143,7 @@ def create_satellite(plotter, size=0.5):
         inplace=True,
     )
 
-    # Scientific instrument along x_b axis
+    # Create a scientific instrument along the x-axis
     scientific_instrument_texture = pv.read_texture("Assignment 1/camera_texture.png")
     scientific_instrument_b = pv.Cone(
         center=(size - 0.01, 0, 0),
@@ -164,6 +154,7 @@ def create_satellite(plotter, size=0.5):
     )
     scientific_instrument_b.texture_map_to_sphere(inplace=True)
 
+    # Add all components to the plotter
     satellite_mesh = {
         "Body": plotter.add_mesh(body_b, texture=body_texture, show_edges=True),
         "Solar Panels": [
@@ -185,6 +176,16 @@ def create_satellite(plotter, size=0.5):
 
 
 def create_earth(plotter, radius):
+    """
+    Creates a 3D textured model of Earth and adds it to the PyVista plotter.
+
+    Parameters:
+        plotter (pyvista.Plotter): The PyVista plotter to add the Earth model to.
+        radius (float): Radius of the Earth model.
+
+    Returns:
+        pyvista.Plotting: The mesh object of the Earth added to the plotter.
+    """
 
     earth = pv.examples.planets.load_earth(radius=radius)
     earth_texture = pv.examples.load_globe_texture()
@@ -251,6 +252,17 @@ def Rx(angle):
 
 
 def pyvista_rotation_matrix_from_euler_angles(orientation_euler, degrees=False):
+    """
+    Computes the rotation matrix from Euler angles in degrees or radians.
+    Parameters:
+        orientation_euler (list): List of Euler angles [phi, theta, psi] in degrees or radians.
+        degrees (bool, optional): Whether the input angles are in degrees. Default is False.
+
+    Returns:
+        numpy.ndarray: The 3x3 rotation matrix.
+
+    """
+
     # Pyvista rotates in the order y-x-z
     if degrees:
         phi = orientation_euler[0]
@@ -266,6 +278,15 @@ def pyvista_rotation_matrix_from_euler_angles(orientation_euler, degrees=False):
 
 
 def update_satellite_pose(satellite_mesh, r_i, Theta_ib, degrees=False):
+    """
+    Update the satellite's position and orientation in the PyVista plot.
+    Parameters:
+        satellite_mesh (dict): Dictionary containing the satellite's mesh objects.
+        r_i (list): Satellite's position in the inertial frame.
+        Theta_ib (list): Euler angles [phi, theta, psi] in degrees or radians.
+        degrees (bool, optional): Whether the input angles are in degrees. Default is False.
+
+    """
 
     if not degrees:
 
@@ -385,93 +406,55 @@ def update_ecef_frame_orientation(ecef_frame, t):
     ecef_frame["z_label"].position = RotZ.dot([0, 0, 1]) * scale
 
 
-def visualize_scene():
-    """
-    Create the scene with:
-      - Earth at center (radius = Re)
-      - Satellite at 3*Re along y_i with orientation [90, 45, 0]
-      - ECI frame (2*Re)
-      - ECEF frame (1.5*Re)
-      - Body frame (0.5*Re)
-      - Add all reference-frame labels as actors
-      - Update satellite and body orientation
-    """
+def animate_satellite(t, data_log):
 
-    # 1) Create a Plotter
-    p = pv.Plotter()
-
-    # 2) Define Earth's radius (you could pick your own scale, e.g. 6378 or 1.0)
-    Re = 6378.0
-
-    # 3) Create Earth
-    earth_mesh = create_earth(p, Re)
-
-    # 4) Create ECI reference frame
+    plotter = pv.Plotter(off_screen=False)
+    earth_radius = 6378
+    satellite_mesh = create_satellite(plotter, size=0.1 * earth_radius)
+    earth_mesh = create_earth(plotter, radius=earth_radius)
     eci_frame = create_reference_frame(
-        p, labels=["$x_i$", "$y_i$", "$z_i$"], scale=2 * Re
+        plotter,
+        labels=np.array(["$\mathbf{x}^i$", "$\mathbf{y}^i$", "$\mathbf{z}^i$"]),
+        scale=2 * earth_radius,
     )
-    # Add label actors explicitly
-    p.add_actor(eci_frame["x_label"])
-    p.add_actor(eci_frame["y_label"])
-    p.add_actor(eci_frame["z_label"])
-
-    # 5) Create ECEF reference frame
     ecef_frame = create_reference_frame(
-        p, labels=["$x_e$", "$y_e$", "$z_e$"], scale=1.5 * Re
+        plotter,
+        labels=np.array(["$\mathbf{x}^e$", "$\mathbf{y}^e$", "$\mathbf{z}^e$"]),
+        scale=1.5 * earth_radius,
     )
-    p.add_actor(ecef_frame["x_label"])
-    p.add_actor(ecef_frame["y_label"])
-    p.add_actor(ecef_frame["z_label"])
-
-    # 6) Create body reference frame
     body_frame = create_reference_frame(
-        p, labels=["$x_b$", "$y_b$", "$z_b$"], scale=0.5 * Re
+        plotter,
+        labels=np.array(["$\mathbf{x}^b$", "$\mathbf{y}^b$", "$\mathbf{z}^b$"]),
+        scale=0.5 * earth_radius,
     )
-    p.add_actor(body_frame["x_label"])
-    p.add_actor(body_frame["y_label"])
-    p.add_actor(body_frame["z_label"])
+    plotter.add_actor(eci_frame["x_label"])
+    plotter.add_actor(eci_frame["y_label"])
+    plotter.add_actor(eci_frame["z_label"])
+    plotter.add_actor(ecef_frame["x_label"])
+    plotter.add_actor(ecef_frame["y_label"])
+    plotter.add_actor(ecef_frame["z_label"])
+    plotter.add_actor(body_frame["x_label"])
+    plotter.add_actor(body_frame["y_label"])
+    plotter.add_actor(body_frame["z_label"])
+    # Initialize the attitude
+    Theta_ib = np.array([90, 45, 0])
+    # Initialize the gif
+    plotter.open_gif("Assignment 2/satellite_elliptic_animation.gif")
+    # Extracting satellite position
+    r_i_array = np.array(data_log["r_i"])
+    for i in range(len(t)):
+        time = t[i]
+        r_i = r_i_array[i]
+        update_satellite_pose(satellite_mesh, r_i, Theta_ib, degrees=True)
+        update_earth_orientation(earth_mesh, time)
+        update_ecef_frame_orientation(ecef_frame, time)
+        update_body_frame_pose(body_frame, r_i, Theta_ib, degrees=True)
+        plotter.write_frame()
 
-    # 7) Create the satellite (size = 0.1*Re)
-    satellite_mesh = create_satellite(p, size=0.1 * Re)
-
-    # 8) Update the satellite pose
-    #    Satellite at 3*Re along y_i => [0, 3*Re, 0]
-    #    Orientation = [90, 45, 0] in degrees
-    r_i = [0.0 * Re, 2.121 * Re, 2.121 * Re]
-    Theta_i_b_deg = [90, 45, 0]
-    update_satellite_pose(satellite_mesh, r_i, Theta_i_b_deg, degrees=True)
-
-    # 9) Update the body frame orientation
-    update_body_frame_pose(body_frame, r_i, Theta_i_b_deg, degrees=True)
-
-    # 10) Optionally, set ECEF orientation at t=0 (no rotation yet)
-    update_ecef_frame_orientation(ecef_frame, t=0.0)
-
-    # 11) Show the scene
-    p.show()
+    # Closing and finalizing the gif
+    plotter.close()
 
 
 if __name__ == "__main__":
 
-    np.set_printoptions(precision=6, suppress=True)
-
-    # Original vector
-    original_vector = np.array([1, 2, 3])  # A vector along the x-axis
-
-    # Define Euler angles for rotation: [phi, theta, psi] in degrees
-    orientation_euler = [90, 0, 0]  # 90° rotation about the x-axis
-
-    # Compute the rotation matrix
-    rotation_matrix = pyvista_rotation_matrix_from_euler_angles(orientation_euler)
-
-    # Apply the rotation
-    rotated_vector = rotation_matrix.dot(original_vector)
-
-    # Beautify the rotated vector
-    rotated_vector = np.round(rotated_vector, decimals=6)
-
-    print("Original Vector:", original_vector)
-    print("Rotation Matrix:\n", rotation_matrix)
-    print("Rotated Vector:", rotated_vector)
-
-    visualize_scene()
+    pass
