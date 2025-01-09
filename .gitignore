@@ -8,3 +8,9 @@ venv/
 
 # Ignore the __pycache__ files:
 __pycache__/
+
+# Ignore the .vscode folder
+.vscode/
+
+#Ignore the all tempCodeRunnerFile.py
+**/tempCodeRunnerFile.py

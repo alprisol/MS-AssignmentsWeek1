@@ -90,7 +90,7 @@ def calculate_rotation_matrix_from_inertial_to_pqw(omega, OMEGA, i):
     cos_omega, sin_omega = np.cos(omega), np.sin(omega)
     cos_i, sin_i = np.cos(i), np.sin(i)
 
-    return np.array(
+    R_pqw_i = np.array(
         [
             [
                 cos_omega * cos_OMEGA - sin_omega * cos_i * sin_OMEGA,
@@ -105,6 +105,8 @@ def calculate_rotation_matrix_from_inertial_to_pqw(omega, OMEGA, i):
             [sin_i * sin_OMEGA, -sin_i * cos_OMEGA, cos_i],
         ]
     )
+
+    return R_pqw_i
 
 
 def calculate_rotation_matrix_from_inertial_to_orbit(omega, theta, OMEGA, i):
@@ -197,27 +199,27 @@ def calculate_radius_vector_in_inertial(r_pqw, R_pqw_i):
     """
     Calculate radius vector in inertial frame.
     :param r_pqw: Radius vector in PQW frame (km)
-    :param R_pqw_i: Rotation matrix from PQW to inertial frame (3x3)
+    :param R_pqw_i: Rotation matrix to interial frame from PQW  (3x3)
     :return: Radius vector in inertial frame (km)
     """
-    return np.dot(R_pqw_i, r_pqw)
+    return np.dot(R_pqw_i.T, r_pqw)
 
 
 def calculate_velocity_vector_in_inertial(v_pqw, R_pqw_i):
     """
     Calculate velocity vector in inertial frame.
     :param v_pqw: Velocity vector in PQW frame (km/s)
-    :param R_pqw_i: Rotation matrix from PQW to inertial frame (3x3)
+    :param R_pqw_i: Rotation matrix to interial frame from PQW (3x3)
     :return: Velocity vector in inertial frame (km/s)
     """
-    return np.dot(R_pqw_i, v_pqw)
+    return np.dot(R_pqw_i.T, v_pqw)
 
 
 def calculate_acceleration_vector_in_inertial(a_pqw, R_pqw_i):
     """
     Calculate acceleration vector in inertial frame.
     :param a_pqw: Acceleration vector in PQW frame (km/s^2)
-    :param R_pqw_i: Rotation matrix from PQW to inertial frame (3x3)
+    :param R_pqw_i: Rotation matrix to interial frame from PQW (3x3)
     :return: Acceleration vector in inertial frame (km/s^2)
     """
-    return np.dot(R_pqw_i, a_pqw)
+    return np.dot(R_pqw_i.T, a_pqw)

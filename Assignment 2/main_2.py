@@ -14,18 +14,20 @@ data_log = {
     "v_i": [],
     "a_i": [],
     "w_i_io": [],
+    "w_i_io_dot": [],
 }
 mu = 398600.4418  # Gravitational parameter (km^3/s^2)
 earth_radius = 6378  # Earth radius (km)
 
 
-def satellite_dynamic_loop(t, state, params):
+def satellite_dynamic_loop(t, state, params, t_0=0):
     """
     Compute the dynamics of the satellite, updating the true anomaly and logging data.
 
     :param t: Current time (s)
     :param state: Current state vector [theta]
     :param params: Dictionary of orbital parameters
+    :param t_0: Initial time (s)
     :return: State derivative vector and a data log entry
     """
     # Extracting the state vector
@@ -42,11 +44,12 @@ def satellite_dynamic_loop(t, state, params):
     a = calculate_semimajor_axis(ra, rp)
     e = calculate_eccentricity(ra, rp)
     n = calculate_mean_motion(a, mu)
+
     # Calculate derivatives
     theta_dot = calculate_true_anomaly_derivative(e, theta, n)
 
     # Calculate position in PQW frame
-    E = calculate_eccentric_anomaly(n * t, e)
+    E = calculate_eccentric_anomaly(n * (t - t_0), e)
     r_pqw = calculate_radius_vector_in_pqw(a, e, E)
     r_mag = np.linalg.norm(r_pqw)
     v_pqw = calculate_velocity_vector_in_pqw(a, e, n, r_mag, E)
@@ -59,9 +62,17 @@ def satellite_dynamic_loop(t, state, params):
     r_i = calculate_radius_vector_in_inertial(r_pqw, R_pqw_i)
     v_i = calculate_velocity_vector_in_inertial(v_pqw, R_pqw_i)
     a_i = calculate_acceleration_vector_in_inertial(a_pqw, R_pqw_i)
-    w_i_io = calculate_angular_acceleration_of_orbit_relative_to_inertial_referenced_in_inertial(
+
+    # Calculate angular velocity and acceleration of orbit relative to inertial frame
+    w_i_io = (
+        calculate_angular_velocity_of_orbit_relative_to_inertial_referenced_in_inertial(
+            r_i, v_i
+        )
+    )
+    w_i_io_dot = calculate_angular_acceleration_of_orbit_relative_to_inertial_referenced_in_inertial(
         r_i, v_i, a_i
     )
+
     # Logging data
     data_entry = {
         "time": t,
@@ -71,6 +82,7 @@ def satellite_dynamic_loop(t, state, params):
         "v_i": v_i,
         "a_i": a_i,
         "w_i_io": w_i_io,
+        "w_i_io_dot": w_i_io_dot,
     }
 
     # Populate the state vector derivative
@@ -133,6 +145,7 @@ for i in range(len(t)):
     data_log["v_i"].append(log_entry["v_i"])
     data_log["a_i"].append(log_entry["a_i"])
     data_log["w_i_io"].append(log_entry["w_i_io"])
+    data_log["w_i_io_dot"].append(log_entry["w_i_io_dot"])
 
 # Convert data log to arrays
 r_i = np.array(data_log["r_i"])
@@ -143,52 +156,51 @@ time = np.array(data_log["time"])
 x, y, z = r_i[:, 0], r_i[:, 1], r_i[:, 2]
 vx, vy, vz = v_i[:, 0], v_i[:, 1], v_i[:, 2]
 
-# # Plot the orbit
-# plt.plot(t, state_vectors[0, :], label=r"$\theta$")
-# plt.xlabel(r"Time ($s$)")
-# plt.ylabel(r"True Anomaly ($rad$)")
-# plt.title("True Anomaly vs Time")
-# plt.grid("on")
-# plt.legend()
-# plt.show()
+# Plot the orbit
+plt.plot(t, state_vectors[0, :], label=r"$\theta$")
+plt.xlabel(r"Time ($s$)")
+plt.ylabel(r"True Anomaly ($rad$)")
+plt.title("True Anomaly vs Time")
+plt.grid("on")
+plt.legend()
+plt.show()
 
-# # Plot the position vectors (x, y, z components)
-# plt.figure(figsize=(10, 6))
-# plt.plot(t, x, label=r"Position $x$")
-# plt.plot(t, y, label=r"Position $y$")
-# plt.plot(t, z, label=r"Position $z$")
-# plt.xlabel(r"Time ($s$)")
-# plt.ylabel(r"Position ($km$)")
-# plt.title("Position Vector Components Over Time")
-# plt.grid(True)
-# plt.legend()
-# plt.show()
+# Plot the position vectors (x, y, z components)
+plt.figure(figsize=(10, 6))
+plt.plot(t, x, label=r"Position $x$")
+plt.plot(t, y, label=r"Position $y$")
+plt.plot(t, z, label=r"Position $z$")
+plt.xlabel(r"Time ($s$)")
+plt.ylabel(r"Position ($km$)")
+plt.title("Position Vector Components Over Time")
+plt.grid(True)
+plt.legend()
+plt.show()
 
-# # Plot the velocity vectors (vx, vy, vz components)
-# plt.figure(figsize=(10, 6))
-# plt.plot(t, vx, label=r"Velocity $x$")
-# plt.plot(t, vy, label=r"Velocity $y$")
-# plt.plot(t, vz, label=r"Velocity $z$")
-# plt.xlabel(r"Time ($s$)")
-# plt.ylabel(r"Velocity ($km/s$)")
-# plt.title("Velocity Vector Components Over Time")
-# plt.grid(True)
-# plt.legend()
-# plt.show()
+# Plot the velocity vectors (vx, vy, vz components)
+plt.figure(figsize=(10, 6))
+plt.plot(t, vx, label=r"Velocity $x$")
+plt.plot(t, vy, label=r"Velocity $y$")
+plt.plot(t, vz, label=r"Velocity $z$")
+plt.xlabel(r"Time ($s$)")
+plt.ylabel(r"Velocity ($km/s$)")
+plt.title("Velocity Vector Components Over Time")
+plt.grid(True)
+plt.legend()
+plt.show()
 
-# # Create a 3D figure
-# fig = plt.figure(figsize=(8, 6))
-# ax = fig.add_subplot(111, projection="3d")
-# ax.plot(x, y, z, label="Orbit")
-# ax.scatter(0, 0, 0, color="orange", s=100, label="Earth center")
-# ax.set_xlabel(r"$X$ (km)")
-# ax.set_ylabel(r"$Y$ (km)")
-# ax.set_zlabel(r"$Z$ (km)")
-# ax.set_box_aspect([1, 1, 1])
-# ax.legend()
-# ax.set_title("Orbital Trajectory in 3D")
-# plt.show()
-
+# Create a 3D figure
+fig = plt.figure(figsize=(8, 6))
+ax = fig.add_subplot(111, projection="3d")
+ax.plot(x, y, z, label="Orbit")
+ax.scatter(0, 0, 0, color="orange", s=100, label="Earth center")
+ax.set_xlabel(r"$X$ (km)")
+ax.set_ylabel(r"$Y$ (km)")
+ax.set_zlabel(r"$Z$ (km)")
+ax.set_box_aspect([1, 1, 1])
+ax.legend()
+ax.set_title("Orbital Trajectory in 3D")
+plt.show()
 
 # Animation of the satellite orbit
 animate_satellite(t, data_log)
