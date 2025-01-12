@@ -6,6 +6,12 @@ import vtk
 from orbital_mechanics_3 import *
 from attitude_dynamics import *
 
+# Set global NumPy print options
+np.set_printoptions(
+    precision=3,  # Limit the precision to 3 decimal places
+    suppress=True,  # Avoid scientific notation for small numbers
+)
+
 # Enable LaTeX rendering and importing the xcolor package
 plt.rcParams["text.usetex"] = True
 plt.rcParams["text.latex.preamble"] = r"\usepackage{xcolor}"
@@ -278,30 +284,30 @@ def pyvista_rotation_matrix_from_euler_angles(orientation_euler, degrees=False):
     return R
 
 
-def update_satellite_pose(satellite_mesh, r_i, Theta_ib, degrees=False):
+def update_satellite_pose(satellite_mesh, r_i, THETA_ib, degrees=True):
     """
     Update the satellite's position and orientation in the PyVista plot.
     Parameters:
         satellite_mesh (dict): Dictionary containing the satellite's mesh objects.
         r_i (list): Satellite's position in the inertial frame.
-        Theta_ib (list): Euler angles [phi, theta, psi] in degrees or radians.
+        THETA_ib (list): Euler angles [phi, theta, psi] in degrees or radians.
         degrees (bool, optional): Whether the input angles are in degrees. Default is False.
 
     """
 
     if not degrees:
 
-        Theta_ib = np.rad2deg(Theta_ib)
+        THETA_ib = np.rad2deg(THETA_ib)
 
     satellite_mesh["Body"].SetPosition(r_i)
     satellite_mesh["Solar Panels"][0].SetPosition(r_i)
     satellite_mesh["Solar Panels"][1].SetPosition(r_i)
     satellite_mesh["Scientific Instrument"].SetPosition(r_i)
 
-    satellite_mesh["Body"].SetOrientation(Theta_ib)
-    satellite_mesh["Solar Panels"][0].SetOrientation(Theta_ib)
-    satellite_mesh["Solar Panels"][1].SetOrientation(Theta_ib)
-    satellite_mesh["Scientific Instrument"].SetOrientation(Theta_ib)
+    satellite_mesh["Body"].SetOrientation(THETA_ib)
+    satellite_mesh["Solar Panels"][0].SetOrientation(THETA_ib)
+    satellite_mesh["Solar Panels"][1].SetOrientation(THETA_ib)
+    satellite_mesh["Scientific Instrument"].SetOrientation(THETA_ib)
 
 
 def update_earth_orientation(earth_mesh, t):
@@ -320,7 +326,7 @@ def update_earth_orientation(earth_mesh, t):
     earth_mesh.SetOrientation([0.0, 0.0, orientation_degrees])
 
 
-def update_body_frame_pose(body_frame, r_i, Theta_ib, degrees=False):
+def update_body_frame_pose(body_frame, r_i, THETA_ib, degrees=True):
     """
     Update the body-frame axes (mesh) and their labels.
 
@@ -333,25 +339,26 @@ def update_body_frame_pose(body_frame, r_i, Theta_ib, degrees=False):
           - 'scale':  a float scale factor for arrow and label size
     r_i : array-like
         3D position of the body-frame origin in the inertial frame (e.g., ECI)
-    Theta_ib : list or tuple of float
+    THETA_ib : list or tuple of float
         Euler angles [phi, theta, psi] in degrees, used by `SetOrientation`
     degrees : bool, optional
+        Whether the input angles are in degrees. Default is True.
     """
 
     if not degrees:
-        Theta_ib = np.rad2deg(Theta_ib)
+        THETA_ib = np.rad2deg(THETA_ib)
 
     # 1) Update the arrow mesh positions and orientations
     body_frame["x"].SetPosition(r_i)
     body_frame["y"].SetPosition(r_i)
     body_frame["z"].SetPosition(r_i)
 
-    body_frame["x"].SetOrientation(Theta_ib)
-    body_frame["y"].SetOrientation(Theta_ib)
-    body_frame["z"].SetOrientation(Theta_ib)
+    body_frame["x"].SetOrientation(THETA_ib)
+    body_frame["y"].SetOrientation(THETA_ib)
+    body_frame["z"].SetOrientation(THETA_ib)
 
     # 2) Obtain the rotation matrix from body to inertial using your helper function
-    R_i_b = pyvista_rotation_matrix_from_euler_angles(Theta_ib)
+    R_i_b = pyvista_rotation_matrix_from_euler_angles(THETA_ib)
 
     # 3) Update label positions
     scale = body_frame["scale"]
@@ -360,7 +367,7 @@ def update_body_frame_pose(body_frame, r_i, Theta_ib, degrees=False):
     body_frame["z_label"].position = r_i + R_i_b.dot([0, 0, 1]) * scale
 
 
-def update_orbit_frame_pose(orbit_frame, r_i, Theta_io, degrees=False):
+def update_orbit_frame_pose(orbit_frame, r_i, THETA_io, degrees=True):
     """
     Updates the orbit-frame axes so that:
       x^o points radially outward (r_i / ||r_i||),
@@ -374,28 +381,28 @@ def update_orbit_frame_pose(orbit_frame, r_i, Theta_io, degrees=False):
         The dictionary returned by create_orbit_frame().
     r_i : ndarray of shape (3,)
         The satellite's position vector in the inertial frame [km or whatever units].
-    Theta_io : list or tuple of float
+    THETA_io : list or tuple of float
         Euler angles [phi, theta, psi] in degrees, used by `SetOrientation`.
     degrees : bool, optional
-        If True, apply `SetOrientation` in degrees. (PyVista typically expects degrees.)
+        Whether the input angles are in degrees. Default is True.
     """
     if not degrees:
-        Theta_io = np.deg2rad(Theta_io)
+        THETA_io = np.degrees(THETA_io)
 
     # 1) Update the arrow mesh positions and orientations
     orbit_frame["x"].SetPosition(r_i)
     orbit_frame["y"].SetPosition(r_i)
     orbit_frame["z"].SetPosition(r_i)
 
-    orbit_frame["x"].SetOrientation(Theta_io)
-    orbit_frame["y"].SetOrientation(Theta_io)
-    orbit_frame["z"].SetOrientation(Theta_io)
+    orbit_frame["x"].SetOrientation(THETA_io)
+    orbit_frame["y"].SetOrientation(THETA_io)
+    orbit_frame["z"].SetOrientation(THETA_io)
 
     # 2) Compute the rotation matrix from orbit to inertial using your helper function
-    R_i_o = pyvista_rotation_matrix_from_euler_angles(Theta_io)
-    scale = orbit_frame["scale"]
+    R_i_o = pyvista_rotation_matrix_from_euler_angles(THETA_io)
 
     # 3) Update label positions
+    scale = orbit_frame["scale"]
     orbit_frame["x_label"].position = r_i + R_i_o[:, 0] * scale
     orbit_frame["y_label"].position = r_i + R_i_o[:, 1] * scale
     orbit_frame["z_label"].position = r_i + R_i_o[:, 2] * scale
@@ -508,28 +515,32 @@ def animate_satellite(t, data_log, gif_name):
     plotter.add_actor(body_frame["y_label"])
     plotter.add_actor(body_frame["z_label"])
 
-    # Extracting satellite attitude
-    q_ib_array = np.array(data_log["q_ib"])
-    q_io_array = np.array(data_log["q_io"])
-    for i in range(len(t)):
-        Theta_ib = calculate_euler_angles_from_quaternion(q_ib_array[i])
-        Theta_io = calculate_euler_angles_from_quaternion(q_io_array[i])
+    # Extracting satellite position
+    r_i_array = np.array(data_log["r_i"])
+
+    # plotter.view_vector([0, 0, -1])
+    # plotter.camera.position = (0, 0, 20 * earth_radius)
 
     # Initialize the gif
     plotter.open_gif(gif_name)
 
-    # Extracting satellite position
-    r_i_array = np.array(data_log["r_i"])
-
     # Animate and update the satellite's position and orientation
     for i in range(len(t)):
+
+        # Extracting the data
         time = t[i]
         r_i = r_i_array[i]
-        update_satellite_pose(satellite_mesh, r_i, Theta_ib, degrees=False)
+        THETA_ib = np.array(data_log["THETA_ib"][i])
+        THETA_io = np.array(data_log["THETA_io"][i])
+
+        # Updating the satellite's position and orientation
+        update_satellite_pose(satellite_mesh, r_i, THETA_ib)
         update_earth_orientation(earth_mesh, time)
         update_ecef_frame_orientation(ecef_frame, time)
-        update_body_frame_pose(body_frame, r_i, Theta_ib, degrees=False)
-        update_orbit_frame_pose(orbit_frame, r_i, Theta_io, degrees=False)
+        update_body_frame_pose(body_frame, r_i, THETA_ib)
+        update_orbit_frame_pose(orbit_frame, r_i, THETA_io)
+
+        # Update the plotter
         plotter.write_frame()
 
     # Closing and finalizing the gif

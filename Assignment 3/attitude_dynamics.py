@@ -64,6 +64,63 @@ def calculate_rotation_matrix_from_quaternion(q_ab):
     return R_b_a
 
 
+def calculate_quaternion_from_rotation_matrix(R):
+    """
+    Calculates the quaternion corresponding to a given rotation matrix.
+
+    Parameters:
+    R (ndarray): A 3x3 rotation matrix.
+
+    Returns:
+    ndarray: A 4-element quaternion [eta, epsilon1, epsilon2, epsilon3],
+             where:
+             - eta is the scalar part of the quaternion
+             - epsilon1, epsilon2, epsilon3 are the vector components.
+    """
+    # Ensure R is a proper rotation matrix
+    if not (
+        np.allclose(np.dot(R.T, R), np.eye(3)) and np.isclose(np.linalg.det(R), 1.0)
+    ):
+        raise ValueError("Input matrix is not a valid rotation matrix.")
+
+    # Trace of the matrix
+    trace = np.trace(R)
+
+    # Initialize quaternion
+    q = np.zeros(4)
+
+    if trace > 0:
+        # Case 1: Positive trace
+        S = 2.0 * np.sqrt(1.0 + trace)
+        q[0] = 0.25 * S  # eta
+        q[1] = (R[2, 1] - R[1, 2]) / S  # epsilon1
+        q[2] = (R[0, 2] - R[2, 0]) / S  # epsilon2
+        q[3] = (R[1, 0] - R[0, 1]) / S  # epsilon3
+    elif (R[0, 0] > R[1, 1]) and (R[0, 0] > R[2, 2]):
+        # Case 2: R[0,0] is the largest diagonal element
+        S = 2.0 * np.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2])
+        q[0] = (R[2, 1] - R[1, 2]) / S  # eta
+        q[1] = 0.25 * S  # epsilon1
+        q[2] = (R[0, 1] + R[1, 0]) / S  # epsilon2
+        q[3] = (R[0, 2] + R[2, 0]) / S  # epsilon3
+    elif R[1, 1] > R[2, 2]:
+        # Case 3: R[1,1] is the largest diagonal element
+        S = 2.0 * np.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2])
+        q[0] = (R[0, 2] - R[2, 0]) / S  # eta
+        q[1] = (R[0, 1] + R[1, 0]) / S  # epsilon1
+        q[2] = 0.25 * S  # epsilon2
+        q[3] = (R[1, 2] + R[2, 1]) / S  # epsilon3
+    else:
+        # Case 4: R[2,2] is the largest diagonal element
+        S = 2.0 * np.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1])
+        q[0] = (R[1, 0] - R[0, 1]) / S  # eta
+        q[1] = (R[0, 2] + R[2, 0]) / S  # epsilon1
+        q[2] = (R[1, 2] + R[2, 1]) / S  # epsilon2
+        q[3] = 0.25 * S  # epsilon3
+
+    return q
+
+
 def calculate_inverse_quaternion(q_ab):
     """
     Calculates the inverse (conjugate) of a quaternion q_ab.
@@ -179,7 +236,7 @@ def attitude_dyanamics(J, q_ob, w_ob_b, w_io_i, w_io_i_dot, R_i_o, tau_a_b, tau_
     return w_dot_ob_b
 
 
-def calculate_euler_angles_from_quaternion(q_ab):
+def calculate_euler_angles_from_quaternion(q_ab, degrees=True):
     """
     Calculates the Euler angles [phi, theta, psi] from a given quaternion [q0, q1, q2, q3].
 
@@ -187,6 +244,8 @@ def calculate_euler_angles_from_quaternion(q_ab):
     ----------
     q_ab : list or tuple of float
         The quaternion [q0, q1, q2, q3], with q0 as the scalar part.
+    degrees : bool, optional
+        If True, the output angles are in degrees. If False (default), the angles are in radians.
 
     Returns
     -------
@@ -213,7 +272,13 @@ def calculate_euler_angles_from_quaternion(q_ab):
     # Yaw (psi)
     psi = np.atan2(2.0 * (q0 * q3 + q1 * q2), 1.0 - 2.0 * (q2**2 + q3**2))
 
-    return [phi, theta, psi]
+    # Convert to degrees if requested
+    if degrees:
+        phi = np.degrees(phi)
+        theta = np.degrees(theta)
+        psi = np.degrees(psi)
+
+    return np.array([phi, theta, psi])
 
 
 def calculate_euler_angles_from_rotation_matrix(R, out_in_rad=True):

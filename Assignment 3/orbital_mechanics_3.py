@@ -225,7 +225,7 @@ def calculate_acceleration_vector_in_inertial(a_pqw, R_pqw_i):
     return np.dot(R_pqw_i.T, a_pqw)
 
 
-def quaternion_product(q1, q2):
+def calculate_quaternion_product(q1, q2):
     """
     Returns the quaternion product q1 ⊗ q2.
 
@@ -267,21 +267,20 @@ def calculate_quaternion_from_orbital_parameters(omega, OMEGA, i, theta, degrees
         theta = np.radians(theta)
 
     # 1) Quaternion for rotation by OMEGA around the Z-axis
-    q_OMEGA = np.array(
-        [np.cos(OMEGA / 2.0), 0.0, 0.0, np.sin(OMEGA / 2.0)], dtype=float
-    )
+    q_OMEGA = np.array([np.cos(OMEGA / 2.0), 0.0, 0.0, np.sin(OMEGA / 2.0)])
 
     # 2) Quaternion for rotation by i around the X-axis
-    q_i = np.array([np.cos(i / 2.0), np.sin(i / 2.0), 0.0, 0.0], dtype=float)
+    q_i = np.array([np.cos(i / 2.0), np.sin(i / 2.0), 0.0, 0.0])
 
     # 3) Quaternion for rotation by (omega + theta) around the Z-axis
     q_omega_plus_theta = np.array(
-        [np.cos((omega + theta) / 2.0), 0.0, 0.0, np.sin((omega + theta) / 2.0)],
-        dtype=float,
+        [np.cos((omega + theta) / 2.0), 0.0, 0.0, np.sin((omega + theta) / 2.0)]
     )
 
     # Combine them:
     # q_i,o = q_(ω+θ) ⊗ q_i ⊗ q_Ω
-    q_i_o = quaternion_product(q_omega_plus_theta, quaternion_product(q_i, q_OMEGA))
+    q_i_o = calculate_quaternion_product(
+        q_omega_plus_theta, calculate_quaternion_product(q_i, q_OMEGA)
+    )
 
     return q_i_o
