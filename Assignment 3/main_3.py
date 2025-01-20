@@ -96,12 +96,13 @@ def satellite_dynamic_loop(t, state, params):
     # 5 POSITION, VELOCITY, ACCELERATION
     M = n * (t - t_0)  # mean anomaly, approx
     E = calculate_eccentric_anomaly(M, e)
+    R_pqw_i = calculate_rotation_matrix_from_inertial_to_pqw(omega, OMEGA, i)
     r_pqw = calculate_radius_vector_in_pqw(a, e, E)
-    r_mag = np.linalg.norm(r_pqw)
+    r_i = calculate_radius_vector_in_inertial(r_pqw, R_pqw_i)
+    r_mag = np.linalg.norm(r_i)
     v_pqw = calculate_velocity_vector_in_pqw(a, e, n, r_mag, E)
     a_pqw = calculate_acceleration_vector_in_pqw(a, e, n, r_mag, E)
-    R_pqw_i = calculate_rotation_matrix_from_inertial_to_pqw(omega, OMEGA, i)
-    r_i = calculate_radius_vector_in_inertial(r_pqw, R_pqw_i)
+
     v_i = calculate_velocity_vector_in_inertial(v_pqw, R_pqw_i)
     a_i = calculate_acceleration_vector_in_inertial(a_pqw, R_pqw_i)
 
@@ -117,12 +118,11 @@ def satellite_dynamic_loop(t, state, params):
 
     # 7 COMPUTE ATTITUDE DYNAMICS
     # 7a) Compute the torque
-    R_i_o = calculate_rotation_matrix_from_inertial_to_orbit(omega, theta, OMEGA, i).T
-    w_io_i = -w_io_i
     tau_d_b = pd_attitude_controller(q_ob, w_ob_b, q_od, w_od_d, kp, kd)
     # 7b) Quaternion derivative
     q_ob_b_dot = quaternion_kinematics(q_ob, w_ob_b)
     # 7c) Body-rate derivative
+    R_i_o = calculate_rotation_matrix_from_inertial_to_orbit(omega, theta, OMEGA, i).T
     w_ob_b_dot = attitude_dyanamics(
         J, q_ob, w_ob_b, w_io_i, w_io_i_dot, R_i_o, tau_d_b, tau_p_b
     )
@@ -196,11 +196,11 @@ if __name__ == "__main__":
         "t_0": 0,  # Initial time (s)
         "ra": earth_radius + 10000,  # Apogee radius (km)
         "rp": earth_radius + 400,  # Perigee radius (km)
-        "omega": np.radians(0),  # Argument of perigee (rad)
-        "OMEGA": np.radians(0),  # Right ascension of ascending node (rad)
-        "i": np.radians(0),  # Inclination (rad)
+        "omega": np.radians(30),  # Argument of perigee (rad)
+        "OMEGA": np.radians(90),  # Right ascension of ascending node (rad)
+        "i": np.radians(60),  # Inclination (rad)
         "mu": mu,  # Gravitational parameter (km^3/s^2)
-        "J": np.eye(3),  # Inertia matrix (3x3)
+        "J": 3 * np.eye(3),  # Inertia matrix (3x3)
         "tau_p_b": np.zeros(3),  # Disturbance torque (3,)
         "kp": 1,  # Proportional gain
         "kd": 1,  # Derivative gain
@@ -315,52 +315,52 @@ if __name__ == "__main__":
     # plt.savefig("rotation_matrices_comparison.png", bbox_inches="tight", dpi=300)
     # plt.close()
 
-    # --- Plot Quaternion Components ---
-    fig1, axes1 = plt.subplots(4, 1, figsize=(8, 10), sharex=True)
-    components = [r"$q0$", r"$q1$", r"$q2$", r"$q3$"]
-    for i in range(4):
-        axes1[i].plot(
-            time[:50], q_ob[:50, i], label=f"Actual {components[i]}", alpha=1.0
-        )
-        axes1[i].hlines(
-            y=q_od[i],
-            xmin=time[0],
-            xmax=time[50],
-            colors=axes1[i].lines[-1].get_color(),
-            linestyles="--",
-            label=f"Desired {components[i]}",
-            alpha=0.5,
-        )
-        axes1[i].set_ylabel(components[i])
-        axes1[i].legend()
-        axes1[i].grid(True)
-    axes1[-1].set_xlabel(r"Time [$s$]")
-    fig1.suptitle(f"Quaternion Components vs. Time with (Kp={kp}, Kd={kd})")
-    fig1.savefig(
-        f"Assignment 3/Quaternion_Kp{kp}_Kd{kd}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
-    )
+    # # --- Plot Quaternion Components ---
+    # fig1, axes1 = plt.subplots(4, 1, figsize=(8, 10), sharex=True)
+    # components = [r"$q0$", r"$q1$", r"$q2$", r"$q3$"]
+    # for i in range(4):
+    #     axes1[i].plot(
+    #         time[:50], q_ob[:50, i], label=f"Actual {components[i]}", alpha=1.0
+    #     )
+    #     axes1[i].hlines(
+    #         y=q_od[i],
+    #         xmin=time[0],
+    #         xmax=time[50],
+    #         colors=axes1[i].lines[-1].get_color(),
+    #         linestyles="--",
+    #         label=f"Desired {components[i]}",
+    #         alpha=0.5,
+    #     )
+    #     axes1[i].set_ylabel(components[i])
+    #     axes1[i].legend()
+    #     axes1[i].grid(True)
+    # axes1[-1].set_xlabel(r"Time [$s$]")
+    # fig1.suptitle(f"Quaternion Components vs. Time with (Kp={kp}, Kd={kd})")
+    # fig1.savefig(
+    #     f"Assignment 3/2_Quaternion_Kp{kp}_Kd{kd}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
+    # )
 
-    # --- Plot Angular Velocity Components ---
-    fig2, axes2 = plt.subplots(3, 1, figsize=(8, 8), sharex=True)
-    components_w = [r"$w_x$", r"$w_y$", r"$w_z$"]
-    for i in range(3):
-        axes2[i].plot(
-            time[:50], w_ob_b[:50, i], label=f"Actual {components_w[i]}", alpha=1.0
-        )
-        axes2[i].hlines(
-            y=w_od_d[i],
-            xmin=time[0],
-            xmax=time[50],
-            colors=axes2[i].lines[-1].get_color(),
-            linestyles="--",
-            label=f"Desired {components_w[i]}",
-            alpha=0.5,
-        )
-        axes2[i].set_ylabel(components_w[i])
-        axes2[i].legend()
-        axes2[i].grid(True)
-    axes2[-1].set_xlabel("Time [s]")
-    fig2.suptitle(f"Angular Velocity Components vs. Time (Kp={kp}, Kd={kd})")
-    fig2.savefig(
-        f"Assignment 3/AngularVel_Kp{kp}_Kd{kd}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
-    )
+    # # --- Plot Angular Velocity Components ---
+    # fig2, axes2 = plt.subplots(3, 1, figsize=(8, 8), sharex=True)
+    # components_w = [r"$w_x$", r"$w_y$", r"$w_z$"]
+    # for i in range(3):
+    #     axes2[i].plot(
+    #         time[:50], w_ob_b[:50, i], label=f"Actual {components_w[i]}", alpha=1.0
+    #     )
+    #     axes2[i].hlines(
+    #         y=w_od_d[i],
+    #         xmin=time[0],
+    #         xmax=time[50],
+    #         colors=axes2[i].lines[-1].get_color(),
+    #         linestyles="--",
+    #         label=f"Desired {components_w[i]}",
+    #         alpha=0.5,
+    #     )
+    #     axes2[i].set_ylabel(components_w[i])
+    #     axes2[i].legend()
+    #     axes2[i].grid(True)
+    # axes2[-1].set_xlabel("Time [s]")
+    # fig2.suptitle(f"Angular Velocity Components vs. Time (Kp={kp}, Kd={kd})")
+    # fig2.savefig(
+    #     f"Assignment 3/2_AngularVel_Kp{kp}_Kd{kd}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
+    # )

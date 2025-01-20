@@ -48,18 +48,18 @@ def satellite_dynamic_loop(t, state, params, t_0=0):
     # Calculate derivatives
     theta_dot = calculate_true_anomaly_derivative(e, theta, n)
 
-    # Calculate position in PQW frame
-    E = calculate_eccentric_anomaly(n * (t - t_0), e)
-    r_pqw = calculate_radius_vector_in_pqw(a, e, E)
-    r_mag = np.linalg.norm(r_pqw)
-    v_pqw = calculate_velocity_vector_in_pqw(a, e, n, r_mag, E)
-    a_pqw = calculate_acceleration_vector_in_pqw(a, e, n, r_mag, E)
-
     # Rotation matrix from PQW to inertial frame
     R_pqw_i = calculate_rotation_matrix_from_inertial_to_pqw(omega, Omega, i)
 
-    # Convert to inertial frame
+    # Calculate position in PQW frame
+    E = calculate_eccentric_anomaly(n * (t - t_0), e)
+    r_pqw = calculate_radius_vector_in_pqw(a, e, E)
     r_i = calculate_radius_vector_in_inertial(r_pqw, R_pqw_i)
+    r_mag = np.linalg.norm(r_i)
+    v_pqw = calculate_velocity_vector_in_pqw(a, e, n, r_mag, E)
+    a_pqw = calculate_acceleration_vector_in_pqw(a, e, n, r_mag, E)
+
+    # Convert to inertial frame
     v_i = calculate_velocity_vector_in_inertial(v_pqw, R_pqw_i)
     a_i = calculate_acceleration_vector_in_inertial(a_pqw, R_pqw_i)
 

@@ -172,7 +172,11 @@ def calculate_velocity_vector_in_pqw(a, e, n, r, E):
     :return: Velocity vector in PQW frame (km/s)
     """
     return np.array(
-        [-(a**2) * n / r * np.sin(E), a**2 * n / r * np.sqrt(1 - e**2) * np.cos(E), 0]
+        [
+            ((-(a**2) * n) / r) * np.sin(E),
+            ((a**2 * n) / r) * np.sqrt(1 - e**2) * np.cos(E),
+            0,
+        ]
     )
 
 

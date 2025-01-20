@@ -5,6 +5,7 @@ import vtk
 
 from orbital_mechanics_4 import *
 from attitude_dynamics_4 import *
+from sensors import *
 
 # Set global NumPy print options
 np.set_printoptions(
@@ -201,6 +202,42 @@ def create_earth(plotter, radius):
     return earth_mesh
 
 
+def create_sensor_cone(
+    plotter,
+    r_i,
+    R_i_b,
+    raycasting_length,
+    field_of_view_half_deg,
+    number_of_raycasting_points,
+    earth_radius,
+):
+    # Finding the intersection points
+    intersection_points_i = calculate_intersection_points_in_inertial_frame(
+        r_i,
+        R_i_b,
+        raycasting_length,
+        field_of_view_half_deg,
+        number_of_raycasting_points,
+        earth_radius,
+    )
+    # Create triangles for the cone
+    triangles = []
+    for i in range(len(intersection_points_i[:, 0]) - 1):
+        triangles.append([r_i, intersection_points_i[i + 1], intersection_points_i[i]])
+
+    # Close the cone by connecting the last point to the first
+    triangles.append([r_i, intersection_points_i[0], intersection_points_i[-1]])
+
+    # Create the mesh
+    cone_mesh = pv.PolyData()
+    for tri in triangles:
+        cone_mesh += pv.Triangle(tri)
+
+    plotter.add_mesh(cone_mesh, opacity=0.25, color="green")
+
+    return cone_mesh
+
+
 def Rz(angle):
     """
     Creates a rotation matrix for a rotation around the z-axis.
@@ -324,6 +361,55 @@ def update_earth_orientation(earth_mesh, t):
     # PyVista's SetOrientation typically expects [x_rot, y_rot, z_rot] in degrees
     # Here, we only rotate about Earth's z-axis
     earth_mesh.SetOrientation([0.0, 0.0, orientation_degrees])
+
+
+def update_sensor_cone_points(
+    plotter,
+    line_actor,
+    sensor_cone_mesh,
+    r_i,
+    R_i_b,
+    raycasting_length,
+    field_of_view_half_deg,
+    number_of_raycasting_points,
+    earth_radius,
+):
+    #########################
+    # Updating Cone Triangles
+    #########################
+    # Recalculates the intersection points
+    intersection_points_i = calculate_intersection_points_in_inertial_frame(
+        r_i,
+        R_i_b,
+        raycasting_length,
+        field_of_view_half_deg,
+        number_of_raycasting_points,
+        earth_radius,
+    )
+    # Combine origin with intersection points to form new vertex positions
+    new_points = np.vstack([r_i, intersection_points_i])
+    # Update the mesh points
+    sensor_cone_mesh.points = new_points
+
+    #########################
+    # Update the circle lines
+    #########################
+    circle_lines = []
+    for i in range(len(intersection_points_i) - 1):
+        circle_lines.append([intersection_points_i[i], intersection_points_i[i + 1]])
+
+    circle_lines.append([intersection_points_i[-1], intersection_points_i[0]])
+
+    # Convert lines to a NumPy array
+    line_points = np.array(circle_lines).reshape(-1, 3)
+
+    # Remove the old lines if line_actor exists
+    if line_actor is not None:
+        plotter.remove_actor(line_actor)
+
+    line_actor = plotter.add_lines(line_points, color="green", width=2)
+
+    return line_actor
 
 
 def update_body_frame_pose(body_frame, r_i, THETA_ib, degrees=True):
@@ -452,6 +538,153 @@ def update_ecef_frame_orientation(ecef_frame, t):
     ecef_frame["z_label"].position = RotZ.dot([0, 0, 1]) * scale
 
 
+def visualize_scene(
+    data_log,
+    time_index=-1,
+    off_screen=False,
+):
+    """
+    Creates a single still scene of the satellite around Earth with various reference frames.
+
+    Parameters:
+    -----------
+    data_log : dict
+        Dictionary containing the orbit and attitude information. Must contain at least:
+        - "time" (1D array of time [s])
+        - "r_i" (Nx3 array of satellite positions in the inertial frame)
+        - "THETA_ib" (Nx3 array of Euler angles from inertial to body)
+        - "THETA_io" (Nx3 array of Euler angles from inertial to orbit)
+    time_index : int, optional
+        Index into data_log arrays. Default is -1 (the last time step).
+    off_screen : bool, optional
+        If True, PyVista’s Plotter is created in off-screen mode. Default is False.
+
+    Returns:
+    --------
+    plotter : pyvista.Plotter
+        The PyVista plotter containing the scene. Use plotter.show() to display it.
+    """
+
+    # Function constants:
+    earth_radius = 6378
+    raycasting_length = 10000
+    field_of_view_half_deg = 15
+    number_of_raycasting_points = 100
+    frames_scale_multiplicators = [2, 1.5, 0.5]
+    satellite_size_multiplier = 0.1
+
+    # --- Retrieve single time/index from data_log ---
+    t_array = np.array(data_log["time"])
+    r_i_array = np.array(data_log["r_i"])
+    THETA_ib_array = np.array(data_log["THETA_ib"])
+    THETA_io_array = np.array(data_log["THETA_io"])
+
+    # If the user passes an out-of-bounds time_index, clamp it
+    if time_index >= len(t_array):
+        time_index = len(t_array) - 1
+
+    # Extract desired instant
+    time_value = t_array[time_index]
+    r_i = r_i_array[time_index]
+    THETA_ib = THETA_ib_array[time_index]
+    THETA_io = THETA_io_array[time_index]
+
+    # --- Create the PyVista plotter ---
+    plotter = pv.Plotter(off_screen=off_screen)
+
+    # --- Create Earth and satellite ---
+    satellite_mesh = create_satellite(
+        plotter=plotter,
+        size=satellite_size_multiplier * earth_radius,
+    )
+    earth_mesh = create_earth(
+        plotter=plotter,
+        radius=earth_radius,
+    )
+
+    # -- Create Sensor Cone --
+    R_i_b = pyvista_rotation_matrix_from_euler_angles(THETA_ib)
+    line_actor = plotter.add_lines(np.empty((0, 3)), color="green", width=2)
+    sensor_cone_mesh = create_sensor_cone(
+        plotter,
+        r_i,
+        R_i_b,
+        raycasting_length=raycasting_length,
+        field_of_view_half_deg=field_of_view_half_deg,
+        number_of_raycasting_points=number_of_raycasting_points,
+        earth_radius=earth_radius,
+    )
+
+    # --- Create reference frames ---
+    orbit_frame = create_reference_frame(
+        plotter,
+        labels=["$\\mathbf{x}^o$", "$\\mathbf{y}^o$", "$\\mathbf{z}^o$"],
+        scale=frames_scale_multiplicators[2] * earth_radius,
+    )
+    eci_frame = create_reference_frame(
+        plotter,
+        labels=["$\\mathbf{x}^i$", "$\\mathbf{y}^i$", "$\\mathbf{z}^i$"],
+        scale=frames_scale_multiplicators[0] * earth_radius,
+    )
+    ecef_frame = create_reference_frame(
+        plotter,
+        labels=["$\\mathbf{x}^e$", "$\\mathbf{y}^e$", "$\\mathbf{z}^e$"],
+        scale=frames_scale_multiplicators[1] * earth_radius,
+    )
+    body_frame = create_reference_frame(
+        plotter,
+        labels=["$\\mathbf{x}^b$", "$\\mathbf{y}^b$", "$\\mathbf{z}^b$"],
+        scale=frames_scale_multiplicators[2] * earth_radius,
+    )
+
+    # --- Add the text labels (PyVista handles them as actors) ---
+    plotter.add_actor(orbit_frame["x_label"])
+    plotter.add_actor(orbit_frame["y_label"])
+    plotter.add_actor(orbit_frame["z_label"])
+    plotter.add_actor(eci_frame["x_label"])
+    plotter.add_actor(eci_frame["y_label"])
+    plotter.add_actor(eci_frame["z_label"])
+    plotter.add_actor(ecef_frame["x_label"])
+    plotter.add_actor(ecef_frame["y_label"])
+    plotter.add_actor(ecef_frame["z_label"])
+    plotter.add_actor(body_frame["x_label"])
+    plotter.add_actor(body_frame["y_label"])
+    plotter.add_actor(body_frame["z_label"])
+
+    # --- Update positions/orientations for this snapshot ---
+    #   1) Satellite pose
+    update_satellite_pose(satellite_mesh, r_i, THETA_ib, degrees=True)
+    #   2) Earth orientation
+    update_earth_orientation(earth_mesh, time_value)
+    #   3) ECEF frame orientation
+    update_ecef_frame_orientation(ecef_frame, time_value)
+    #   4) Body frame pose
+    update_body_frame_pose(body_frame, r_i, THETA_ib, degrees=True)
+    #   5) Orbit frame pose
+    update_orbit_frame_pose(orbit_frame, r_i, THETA_io, degrees=True)
+    #   6) Sensor cone
+    line_actor = update_sensor_cone_points(
+        plotter,
+        line_actor,
+        sensor_cone_mesh,
+        r_i,
+        R_i_b,
+        raycasting_length,
+        field_of_view_half_deg,
+        number_of_raycasting_points,
+        earth_radius,
+    )
+
+    # --- Optional camera setup (you can adjust as you prefer) ---
+    # Example: place the camera far above the North Pole
+    # plotter.camera.position = (0, 0, 20 * earth_radius)
+    plotter.camera.focal_point = (0, 0, 0)  # look at Earth's center
+    # plotter.camera.up = (0, 1, 0)
+
+    # Return the plotter so user can call plotter.show() or do further manipulations
+    return plotter
+
+
 def animate_satellite(t, data_log, gif_name):
     """
     Animates the satellite's position and orientation over time using PyVista.
@@ -466,18 +699,35 @@ def animate_satellite(t, data_log, gif_name):
 
     # Constants
     earth_radius = 6378
+    raycasting_length = 10000
+    field_of_view_half_deg = 15
+    number_of_raycasting_points = 100
     frames_scale_multiplicators = [2, 1.5, 0.5]
-    satellite_size_muliplicator = 0.1
+    satellite_size_multiplier = 0.1
 
     # Create the satellite, Earth
     satellite_mesh = create_satellite(
         plotter=plotter,
-        size=satellite_size_muliplicator * earth_radius,
+        size=satellite_size_multiplier * earth_radius,
     )
     earth_mesh = create_earth(
         plotter=plotter,
         radius=earth_radius,
     )
+
+    # Create sensor cone
+    R_i_b = pyvista_rotation_matrix_from_euler_angles(data_log["THETA_ib"][0])
+    r_i = data_log["r_i"][0]
+    sensor_cone_mesh = create_sensor_cone(
+        plotter,
+        r_i,
+        R_i_b,
+        raycasting_length=raycasting_length,
+        field_of_view_half_deg=field_of_view_half_deg,
+        number_of_raycasting_points=number_of_raycasting_points,
+        earth_radius=earth_radius,
+    )
+    line_actor = plotter.add_lines(np.empty((0, 3)), color="green", width=2)
 
     # Create the reference frames
     orbit_frame = create_reference_frame(
@@ -518,8 +768,8 @@ def animate_satellite(t, data_log, gif_name):
     # Extracting satellite position
     r_i_array = np.array(data_log["r_i"])
 
-    # plotter.view_vector([0, 0, -1])
-    # plotter.camera.position = (0, 0, 20 * earth_radius)
+    plotter.view_vector([0, 0, -1])
+    plotter.camera.position = (0, 0, 20 * earth_radius)
 
     # Initialize the gif
     plotter.open_gif(gif_name)
@@ -532,6 +782,7 @@ def animate_satellite(t, data_log, gif_name):
         r_i = r_i_array[i]
         THETA_ib = np.array(data_log["THETA_ib"][i])
         THETA_io = np.array(data_log["THETA_io"][i])
+        R_i_b = pyvista_rotation_matrix_from_euler_angles(THETA_ib)
 
         # Updating the satellite's position and orientation
         update_satellite_pose(satellite_mesh, r_i, THETA_ib)
@@ -539,6 +790,17 @@ def animate_satellite(t, data_log, gif_name):
         update_ecef_frame_orientation(ecef_frame, time)
         update_body_frame_pose(body_frame, r_i, THETA_ib)
         update_orbit_frame_pose(orbit_frame, r_i, THETA_io)
+        line_actor = update_sensor_cone_points(
+            plotter,
+            line_actor,
+            sensor_cone_mesh,
+            r_i,
+            R_i_b,
+            raycasting_length,
+            field_of_view_half_deg,
+            number_of_raycasting_points,
+            earth_radius,
+        )
 
         # Update the plotter
         plotter.write_frame()
