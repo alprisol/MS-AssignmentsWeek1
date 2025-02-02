@@ -515,6 +515,10 @@ def animate_satellite(t, data_log, gif_name):
     plotter.add_actor(body_frame["y_label"])
     plotter.add_actor(body_frame["z_label"])
 
+    # Trajectory of the Satellite
+    trajectory_points = []
+    trajectory_actor = None
+
     # Extracting satellite position
     r_i_array = np.array(data_log["r_i"])
 
@@ -539,6 +543,17 @@ def animate_satellite(t, data_log, gif_name):
         update_ecef_frame_orientation(ecef_frame, time)
         update_body_frame_pose(body_frame, r_i, THETA_ib)
         update_orbit_frame_pose(orbit_frame, r_i, THETA_io)
+
+        # Update Trajectory:
+        trajectory_points.append(np.array(r_i))
+        if len(trajectory_points) > 1:
+            pts = np.array(trajectory_points)
+            n_pts = pts.shape[0]
+            cells = np.hstack([[n_pts], np.arange(n_pts)])
+            traj_poly = pv.PolyData(pts, lines=cells)
+            if trajectory_actor is not None:
+                plotter.remove_actor(trajectory_actor)
+            trajectory_actor = plotter.add_mesh(traj_poly, color="purple", line_width=3)
 
         # Update the plotter
         plotter.write_frame()

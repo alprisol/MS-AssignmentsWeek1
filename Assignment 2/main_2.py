@@ -163,6 +163,7 @@ plt.ylabel(r"True Anomaly ($rad$)")
 plt.title("True Anomaly vs Time")
 plt.grid("on")
 plt.legend()
+plt.savefig("Assignment 2/TrueAnomaly.png")
 plt.show()
 
 # Plot the position vectors (x, y, z components)
@@ -175,6 +176,7 @@ plt.ylabel(r"Position ($km$)")
 plt.title("Position Vector Components Over Time")
 plt.grid(True)
 plt.legend()
+plt.savefig("Assignment 2/PositionVector.png")
 plt.show()
 
 # Plot the velocity vectors (vx, vy, vz components)
@@ -187,6 +189,7 @@ plt.ylabel(r"Velocity ($km/s$)")
 plt.title("Velocity Vector Components Over Time")
 plt.grid(True)
 plt.legend()
+plt.savefig("Assignment 2/VelocityVector.png")
 plt.show()
 
 # Create a 3D figure
@@ -200,6 +203,7 @@ ax.set_zlabel(r"$Z$ (km)")
 ax.set_box_aspect([1, 1, 1])
 ax.legend()
 ax.set_title("Orbital Trajectory in 3D")
+plt.savefig("Assignment 2/3D_Trajectory.png")
 plt.show()
 
 # Animation of the satellite orbit

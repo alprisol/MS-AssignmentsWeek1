@@ -14,3 +14,10 @@ __pycache__/
 
 #Ignore the all tempCodeRunnerFile.py
 **/tempCodeRunnerFile.py
+
+# Ignore all .zip files
+**/**.zip
+
+# Ignore all .docx and .tmp files
+**/**.docx
+**/**.tmp

@@ -195,15 +195,15 @@ if __name__ == "__main__":
     params = {
         "t_0": 0,  # Initial time (s)
         "ra": earth_radius + 10000,  # Apogee radius (km)
-        "rp": earth_radius + 400,  # Perigee radius (km)
+        "rp": earth_radius + 800,  # Perigee radius (km)
         "omega": np.radians(30),  # Argument of perigee (rad)
         "OMEGA": np.radians(90),  # Right ascension of ascending node (rad)
-        "i": np.radians(60),  # Inclination (rad)
+        "i": np.radians(0),  # Inclination (rad)
         "mu": mu,  # Gravitational parameter (km^3/s^2)
         "J": 3 * np.eye(3),  # Inertia matrix (3x3)
         "tau_p_b": np.zeros(3),  # Disturbance torque (3,)
-        "kp": 1,  # Proportional gain
-        "kd": 1,  # Derivative gain
+        "kp": 0.1,  # Proportional gain
+        "kd": 0.1,  # Derivative gain
         "q_od": np.array([0, 0, 1, 0]),  # Desired quaternion
         "w_od_d": np.array(
             [np.radians(0.0), np.radians(0.0), np.radians(0.0)]
@@ -273,94 +273,110 @@ if __name__ == "__main__":
     animate_satellite(
         t,
         data_log,
-        f"Assignment 3/SatelliteAnimation_i{round(params['i'],2)}_omega{round(params['omega'],2)}_OMEGA{round(params['OMEGA'],2)}_q{np.round(params['q_od'],2)}_{round(t_span[1]/3600,2)}h_{n_steps}steps.gif",
+        f"Assignment 3/SatelliteAnimation_ra{round(params['ra'],2)}km_rp{round(params['rp'],2)}km_i{round(params['i'],2)}_omega{round(params['omega'],2)}_OMEGA{round(params['OMEGA'],2)}_q{np.round(params['q_od'],2)}_{round(t_span[1]/3600,2)}h_{n_steps}steps.gif",
     )
 
-    # --- PLOTS AND COMPARISONS---
+    #########
+    # PLOTS
+    #########
 
-    # plot theta:
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-    ax.plot(time, theta, label=r"$\theta$", color="blue")
-    ax.set_xlabel("Time [s]")
-    ax.set_ylabel(r"$\theta$ [rad]")
-    ax.set_title(r"True Anomaly vs. Time")
-    ax.legend()
-    ax.grid(True)
-    fig.savefig(
-        f"Assignment 3/TrueAnomaly_i{round(params['i'],2)}_omega{round(params['omega'],2)}_OMEGA{round(params['OMEGA'],2)}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
+    # Plot the orbit
+    plt.plot(t, state_vectors[0, :], label=r"$\theta$")
+    plt.xlabel(r"Time ($s$)")
+    plt.ylabel(r"True Anomaly ($rad$)")
+    plt.title("True Anomaly vs Time")
+    plt.grid("on")
+    plt.legend()
+    plt.savefig(
+        f"Assignment 3/TrueAnomaly_ra{round(params['ra'],2)}km_rp{round(params['rp'],2)}km_i{round(params['i'],2)}_omega{round(params['omega'],2)}_OMEGA{round(params['OMEGA'],2)}_q{np.round(params['q_od'],2)}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
+    )
+    plt.show()
+
+    # --- Compare rotation matrices ---
+    R_i_o_normal = np.array(data_log["R_i_o_normal"])
+    R_i_o_quaternion = np.array(data_log["R_i_o_quaternion"])
+    # Prepare the text for two columns:
+    col1_text = "R_i_o_normal:\n\n"
+    col2_text = "R_i_o_quaternion:\n\n"
+    for i in range(10):
+        col1_text += f"{R_i_o_normal[i]}\n\n"
+        col2_text += f"{R_i_o_quaternion[i]}\n\n"
+    # Set up Matplotlib figure
+    fig, ax = plt.subplots(figsize=(10, 10))
+    ax.axis("off")  # Turn off the axis
+    # Place the two columns of text using Axes coordinates (0 to 1)
+    ax.text(
+        0.05,  # x position for the first column
+        0.95,  # y position (top of the axis)
+        col1_text,
+        fontsize=10,
+        ha="left",
+        va="top",
+        family="monospace",
+        transform=ax.transAxes,  # use axis coordinates
+    )
+    ax.text(
+        0.55,  # x position for the second column (shifted to the right)
+        0.95,  # y position remains the same
+        col2_text,
+        fontsize=10,
+        ha="left",
+        va="top",
+        family="monospace",
+        transform=ax.transAxes,
+    )
+    # Save as PNG
+    plt.savefig(
+        "Assignment 3/rotation_matrices_comparison.png", bbox_inches="tight", dpi=300
+    )
+    plt.close()
+
+    # --- Plot Quaternion Components ---
+    fig1, axes1 = plt.subplots(4, 1, figsize=(8, 10), sharex=True)
+    components = [r"$q0$", r"$q1$", r"$q2$", r"$q3$"]
+    for i in range(4):
+        axes1[i].plot(
+            time[:50], q_ob[:50, i], label=f"Actual {components[i]}", alpha=1.0
+        )
+        axes1[i].hlines(
+            y=q_od[i],
+            xmin=time[0],
+            xmax=time[50],
+            colors=axes1[i].lines[-1].get_color(),
+            linestyles="--",
+            label=f"Desired {components[i]}",
+            alpha=0.5,
+        )
+        axes1[i].set_ylabel(components[i])
+        axes1[i].legend()
+        axes1[i].grid(True)
+    axes1[-1].set_xlabel(r"Time [$s$]")
+    fig1.suptitle(f"Quaternion Components vs. Time with (Kp={kp}, Kd={kd})")
+    fig1.savefig(
+        f"Assignment 3/2_Quaternion_Kp{kp}_Kd{kd}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
     )
 
-    # # --- Compare rotation matrices ---
-    # R_i_o_normal = np.array(data_log["R_i_o_normal"])
-    # R_i_o_quaternion = np.array(data_log["R_i_o_quaternion"])
-    # # Prepare the output for visualization
-    # output_text = "COMPARISON OF ROTATION MATRICES:\n\n"
-    # for i in range(10):
-    #     output_text += f"R_i_o_normal:\n{R_i_o_normal[i]} \n\n"
-    #     output_text += f"R_i_o_quaternion: \n{R_i_o_quaternion[i]} \n\n"
-    # # Set up Matplotlib figure
-    # fig, ax = plt.subplots(figsize=(10, 10))
-    # ax.axis("off")  # Turn off the axis
-    # ax.text(
-    #     0,
-    #     1,
-    #     output_text,
-    #     fontsize=10,
-    #     ha="left",
-    #     va="top",
-    #     wrap=True,
-    #     family="monospace",
-    # )
-    # # Save as PNG
-    # plt.savefig("rotation_matrices_comparison.png", bbox_inches="tight", dpi=300)
-    # plt.close()
-
-    # # --- Plot Quaternion Components ---
-    # fig1, axes1 = plt.subplots(4, 1, figsize=(8, 10), sharex=True)
-    # components = [r"$q0$", r"$q1$", r"$q2$", r"$q3$"]
-    # for i in range(4):
-    #     axes1[i].plot(
-    #         time[:50], q_ob[:50, i], label=f"Actual {components[i]}", alpha=1.0
-    #     )
-    #     axes1[i].hlines(
-    #         y=q_od[i],
-    #         xmin=time[0],
-    #         xmax=time[50],
-    #         colors=axes1[i].lines[-1].get_color(),
-    #         linestyles="--",
-    #         label=f"Desired {components[i]}",
-    #         alpha=0.5,
-    #     )
-    #     axes1[i].set_ylabel(components[i])
-    #     axes1[i].legend()
-    #     axes1[i].grid(True)
-    # axes1[-1].set_xlabel(r"Time [$s$]")
-    # fig1.suptitle(f"Quaternion Components vs. Time with (Kp={kp}, Kd={kd})")
-    # fig1.savefig(
-    #     f"Assignment 3/2_Quaternion_Kp{kp}_Kd{kd}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
-    # )
-
-    # # --- Plot Angular Velocity Components ---
-    # fig2, axes2 = plt.subplots(3, 1, figsize=(8, 8), sharex=True)
-    # components_w = [r"$w_x$", r"$w_y$", r"$w_z$"]
-    # for i in range(3):
-    #     axes2[i].plot(
-    #         time[:50], w_ob_b[:50, i], label=f"Actual {components_w[i]}", alpha=1.0
-    #     )
-    #     axes2[i].hlines(
-    #         y=w_od_d[i],
-    #         xmin=time[0],
-    #         xmax=time[50],
-    #         colors=axes2[i].lines[-1].get_color(),
-    #         linestyles="--",
-    #         label=f"Desired {components_w[i]}",
-    #         alpha=0.5,
-    #     )
-    #     axes2[i].set_ylabel(components_w[i])
-    #     axes2[i].legend()
-    #     axes2[i].grid(True)
-    # axes2[-1].set_xlabel("Time [s]")
-    # fig2.suptitle(f"Angular Velocity Components vs. Time (Kp={kp}, Kd={kd})")
-    # fig2.savefig(
-    #     f"Assignment 3/2_AngularVel_Kp{kp}_Kd{kd}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
-    # )
+    # --- Plot Angular Velocity Components ---
+    fig2, axes2 = plt.subplots(3, 1, figsize=(8, 8), sharex=True)
+    components_w = [r"$w_x$", r"$w_y$", r"$w_z$"]
+    for i in range(3):
+        axes2[i].plot(
+            time[:50], w_ob_b[:50, i], label=f"Actual {components_w[i]}", alpha=1.0
+        )
+        axes2[i].hlines(
+            y=w_od_d[i],
+            xmin=time[0],
+            xmax=time[50],
+            colors=axes2[i].lines[-1].get_color(),
+            linestyles="--",
+            label=f"Desired {components_w[i]}",
+            alpha=0.5,
+        )
+        axes2[i].set_ylabel(components_w[i])
+        axes2[i].legend()
+        axes2[i].grid(True)
+    axes2[-1].set_xlabel("Time [s]")
+    fig2.suptitle(f"Angular Velocity Components vs. Time (Kp={kp}, Kd={kd})")
+    fig2.savefig(
+        f"Assignment 3/2_AngularVel_Kp{kp}_Kd{kd}_{round(t_span[1]/3600,2)}h_{n_steps}steps.png"
+    )

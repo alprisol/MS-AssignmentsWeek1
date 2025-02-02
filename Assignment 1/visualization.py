@@ -5,6 +5,12 @@ import vtk
 
 from orbital_mechanics import *
 
+# Set global NumPy print options
+np.set_printoptions(
+    precision=3,  # Limit the precision to 3 decimal places
+    suppress=True,  # Avoid scientific notation for small numbers
+)
+
 # Enable LaTeX rendering and importing the xcolor package
 plt.rcParams["text.usetex"] = True
 plt.rcParams["text.latex.preamble"] = r"\usepackage{xcolor}"
@@ -27,25 +33,25 @@ def geometry_examples():
     p = pv.Plotter(shape=(3, 3))
     # Top row
     p.subplot(0, 0)
-    p.add_mesh(cyl, color="lightblue", show_edges=True)
+    p.add_mesh(cyl, color="red", show_edges=True)
     p.subplot(0, 1)
-    p.add_mesh(arrow, color="lightblue", show_edges=True)
+    p.add_mesh(arrow, color="red", show_edges=False)
     p.subplot(0, 2)
-    p.add_mesh(sphere, color="lightblue", show_edges=True)
+    p.add_mesh(sphere, color="red", show_edges=True)
     # Middle row
     p.subplot(1, 0)
-    p.add_mesh(plane, color="lightblue", show_edges=True)
+    p.add_mesh(plane, color="yellow", show_edges=True)
     p.subplot(1, 1)
-    p.add_mesh(line, color="lightblue", line_width=3)
+    p.add_mesh(line, color="yellow", line_width=3)
     p.subplot(1, 2)
-    p.add_mesh(box, color="lightblue", show_edges=True)
+    p.add_mesh(box, color="yellow", show_edges=True)
     # Bottom row
     p.subplot(2, 0)
-    p.add_mesh(cone, color="lightblue", show_edges=True)
+    p.add_mesh(cone, color="red", show_edges=True)
     p.subplot(2, 1)
-    p.add_mesh(poly, color="lightblue", show_edges=True)
+    p.add_mesh(poly, color="red", show_edges=False)
     p.subplot(2, 2)
-    p.add_mesh(disc, color="lightblue", show_edges=True)
+    p.add_mesh(disc, color="red", show_edges=True)
     # Render all of them
     p.show()
 
@@ -288,7 +294,7 @@ def update_earth_orientation(earth_mesh, t):
     Earth rotates with an angular rate of ~7.2921159e-5 rad/s.
     """
     # Convert the Earth's rotation rate from rad/s to deg/s
-    w_ie_deg = np.rad2deg(earth_rot_vel)  # ≈ 0.004178074 deg/s
+    w_ie_deg = np.rad2deg(earth_rot_vel)
 
     # Calculate the accumulated rotation in degrees after t seconds
     orientation_degrees = w_ie_deg * t
@@ -435,7 +441,7 @@ def visualize_scene():
     satellite_mesh = create_satellite(p, size=0.1 * Re)
 
     # 8) Update the satellite pose
-    #    Satellite at 3*Re along y_i => [0, 3*Re, 0]
+    #    Satellite at 3*Re => [0, 2.121*Re, 2.121*Re]
     #    Orientation = [90, 45, 0] in degrees
     r_i = [0.0 * Re, 2.121 * Re, 2.121 * Re]
     Theta_i_b_deg = [90, 45, 0]
@@ -451,27 +457,82 @@ def visualize_scene():
     p.show()
 
 
+def visualize_reference_frame(labels=["$x$", "$y$", "$z$"], scale=1.0):
+    """
+    Visualize a single reference frame in an isolated PyVista scene.
+    """
+    p = pv.Plotter()
+    ref_frame = create_reference_frame(p, labels, scale=scale)
+
+    # Add label actors
+    p.add_actor(ref_frame["x_label"])
+    p.add_actor(ref_frame["y_label"])
+    p.add_actor(ref_frame["z_label"])
+
+    p.add_text("Reference Frame Visualization", font_size=12)
+
+    # Show the scene
+    p.show()
+
+
+def visualize_satellite(size=0.5):
+    """
+    Visualize a single satellite in an isolated PyVista scene.
+    """
+    p = pv.Plotter()
+
+    # Create the satellite
+    sat_mesh = create_satellite(p, size=size)
+
+    p.add_text("Satellite Visualization", font_size=12)
+
+    # Show the scene
+    p.show()
+
+
+def visualize_earth(radius=6378.0):
+    """
+    Visualize the Earth in an isolated PyVista scene.
+    """
+    p = pv.Plotter()
+
+    # Create the Earth
+    earth_mesh = create_earth(p, radius)
+
+    p.add_text("Earth Visualization", font_size=12)
+
+    # Show the scene
+    p.show()
+
+
 if __name__ == "__main__":
 
-    np.set_printoptions(precision=6, suppress=True)
+    geometry_examples()
 
-    # Original vector
-    original_vector = np.array([1, 2, 3])  # A vector along the x-axis
+    visualize_reference_frame()
 
-    # Define Euler angles for rotation: [phi, theta, psi] in degrees
-    orientation_euler = [90, 0, 0]  # 90° rotation about the x-axis
+    visualize_satellite()
 
-    # Compute the rotation matrix
-    rotation_matrix = pyvista_rotation_matrix_from_euler_angles(orientation_euler)
+    visualize_earth()
 
-    # Apply the rotation
-    rotated_vector = rotation_matrix.dot(original_vector)
+    vector = np.array([1, 2, 3])
 
-    # Beautify the rotated vector
-    rotated_vector = np.round(rotated_vector, decimals=6)
+    print("Rotation in X")
+    vector_rotX = vector @ Rx(np.pi / 2)
+    print(Rx(np.pi / 2))
+    print(f"Rotated vector: {vector_rotX}")
+    print()
 
-    print("Original Vector:", original_vector)
-    print("Rotation Matrix:\n", rotation_matrix)
-    print("Rotated Vector:", rotated_vector)
+    print("Rotation in Y")
+    vector_rotY = vector @ Ry(np.pi / 2)
+    print(Ry(np.pi / 2))
+    print(f"Rotated vector: {vector_rotY}")
+    print()
+
+    print("Rotation in Z")
+    vector_rotZ = vector @ Rz(np.pi / 2)
+    print(Rz(np.pi / 2))
+    print(f"Rotated vector: {vector_rotZ}")
+    print()
 
     visualize_scene()

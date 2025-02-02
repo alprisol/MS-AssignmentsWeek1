@@ -3,29 +3,13 @@ from orbital_mechanics import *
 import numpy as np
 import pyvista as pv
 
-# We assume you already have in the same folder:
-#   orbital_mechanics.py (with the required circular orbit functions)
-#   visualization.py     (with the core plotting + update functions)
-# from orbital_mechanics import (
-#     calculate_circular_angular_speed,
-#     calculate_satellite_position_in_circular_orbit,
-# )
-# from visualization import (
-#     create_earth,
-#     create_reference_frame,
-#     create_satellite,
-#     update_satellite_pose,
-#     update_body_frame_pose,
-#     update_ecef_frame_orientation,
-#     update_earth_orientation
-# )
-
 
 def animate_circular_orbit():
     """
     Create a GIF animation of a satellite in a circular orbit around Earth
-    while Earth rotates about its own axis. Builds on the scene elements
-    from `visualize_scene()` but adds a time-stepping loop to produce frames.
+    while Earth rotates about its own axis. In addition, a 'stella' (trajectory
+    line) is added to visualize the history of positions of the satellite's body-frame
+    origin.
     """
 
     # 1) Create a Plotter
@@ -74,7 +58,7 @@ def animate_circular_orbit():
     # 9) Time parameters for the animation
     simulation_time = 8 * 3600  # 8 hours in seconds
     n_frames = 1000
-    time_step = 10  # e.g., 1 minute per step
+    time_step = 10  # e.g., 10 seconds per step
     frame_interval = simulation_time // n_frames  # integer division
     # Angular speed for circular orbit
     dot_varphi = calculate_circular_angular_speed(orbit_radius)
@@ -83,7 +67,11 @@ def animate_circular_orbit():
     gif_filename = "Assignment 1/satellite_animation.gif"
     p.open_gif(gif_filename)
 
-    # 11) Main simulation loop
+    # 11) Prepare trajectory storage for the satellite's body-frame origin
+    trajectory_points = []  # This list will store positions (history)
+    trajectory_actor = None  # Will hold the actor for the trajectory line
+
+    # 12) Main simulation loop
     #     We'll step through the entire simulation_time in increments of time_step
     #     and record the scene whenever we hit the interval for each GIF frame.
     t = 0
@@ -91,16 +79,15 @@ def animate_circular_orbit():
 
     while t <= simulation_time:
 
-        # (a) Update the orbit angle using a simple Euler forward
+        # (a) Update the orbit angle using a simple Euler forward method
         varphi += dot_varphi * time_step
 
         # (b) Compute the satellite's new position (and velocity if needed)
         r_i = calculate_satellite_position_in_circular_orbit(varphi, orbit_radius)
 
-        # We'll assume a simple orientation for demonstration, e.g. pitch up
-        # to keep the satellite "facing Earth" or some nominal orientation.
-        # For now, just let the satellite rotate about z, or remain fixed:
-        Theta_i_b_deg = [90.0, 45.0, np.rad2deg(varphi)]  # example
+        # We'll assume a simple orientation for demonstration,
+        # e.g., keep the satellite "facing Earth" with a nominal orientation.
+        Theta_i_b_deg = [90.0, 45.0, np.rad2deg(varphi)]  # example orientation
 
         # (c) Update the satellite's pose in the scene
         update_satellite_pose(satellite_mesh, r_i, Theta_i_b_deg, degrees=True)
@@ -112,7 +99,24 @@ def animate_circular_orbit():
         # (e) Update ECEF frame orientation at time t
         update_ecef_frame_orientation(ecef_frame, t)
 
-        # (f) Check if it’s time to write a frame to the GIF
+        # (f) Update the trajectory (stella) of the satellite.
+        #     Append the current body-frame origin position to the history.
+        trajectory_points.append(np.array(r_i))
+
+        # If we have at least two points, update the trajectory line.
+        if len(trajectory_points) > 1:
+            pts = np.array(trajectory_points)
+            n_pts = pts.shape[0]
+            # Create a cell array for a polyline: first element is number of points,
+            # followed by the indices [0, 1, ..., n_pts-1].
+            cells = np.hstack([[n_pts], np.arange(n_pts)])
+            traj_poly = pv.PolyData(pts, lines=cells)
+            # Remove the previous trajectory actor if it exists
+            if trajectory_actor is not None:
+                p.remove_actor(trajectory_actor)
+            trajectory_actor = p.add_mesh(traj_poly, color="purple", line_width=3)
+
+        # (g) Check if it’s time to write a frame to the GIF
         if (t % frame_interval) == 0:
             p.write_frame()
             frame_counter += 1
@@ -125,16 +129,10 @@ def animate_circular_orbit():
         if frame_counter >= n_frames:
             break
 
-    # 12) Close and finalize the GIF
+    # 13) Close and finalize the GIF
     p.close()
     print(f"GIF animation saved as {gif_filename}")
 
-    # Note: If you want to see the final scene, call p.show()
-    #       before p.close() or in a separate dedicated call.
-    #       However, note that writing frames is typically done
-    #       before final interactive rendering.
-
 
 if __name__ == "__main__":
-
     animate_circular_orbit()

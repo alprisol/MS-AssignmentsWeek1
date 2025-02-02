@@ -306,19 +306,11 @@ def calculate_quaternion_from_orbital_parameters(omega, OMEGA, i, theta, degrees
         [np.cos((omega + theta) / 2.0), 0.0, 0.0, np.sin((omega + theta) / 2.0)]
     )
 
-    use_T_function = False
-    if use_T_function:
-        # Using the function T()
-        # (q_i ⊗ q_OMEGA)
-        q_i_OMEGA = T(q_i).dot(q_OMEGA)  # shape (4,)
-        # [ (q_omega_plus_theta) ⊗ q_i_OMEGA ]
-        q_i_o = T(q_omega_plus_theta).dot(q_i_OMEGA)  # shape (4,)
-    else:
-        # Using the quaternion product:
-        # q_i,o = q_(ω+θ) ⊗ q_i ⊗ q_Ω
-        q_i_o = calculate_quaternion_product(
-            q_OMEGA, calculate_quaternion_product(q_i, q_omega_plus_theta)
-        )
+    # Using the quaternion product:
+    # q_i,o = q_Ω ⊗ q_i ⊗ q_(ω+θ)
+    q_i_o = calculate_quaternion_product(
+        q_OMEGA, calculate_quaternion_product(q_i, q_omega_plus_theta)
+    )
 
     return q_i_o
 

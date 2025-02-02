@@ -409,9 +409,15 @@ def update_ecef_frame_orientation(ecef_frame, t):
 def animate_satellite(t, data_log):
 
     plotter = pv.Plotter(off_screen=False)
+
+    # Constants
     earth_radius = 6378
+
+    # Create the satellite, Earth
     satellite_mesh = create_satellite(plotter, size=0.1 * earth_radius)
     earth_mesh = create_earth(plotter, radius=earth_radius)
+
+    # Create the reference frames
     eci_frame = create_reference_frame(
         plotter,
         labels=np.array(["$\mathbf{x}^i$", "$\mathbf{y}^i$", "$\mathbf{z}^i$"]),
@@ -427,6 +433,8 @@ def animate_satellite(t, data_log):
         labels=np.array(["$\mathbf{x}^b$", "$\mathbf{y}^b$", "$\mathbf{z}^b$"]),
         scale=0.5 * earth_radius,
     )
+
+    # Add the meshes to the plotter
     plotter.add_actor(eci_frame["x_label"])
     plotter.add_actor(eci_frame["y_label"])
     plotter.add_actor(eci_frame["z_label"])
@@ -436,19 +444,41 @@ def animate_satellite(t, data_log):
     plotter.add_actor(body_frame["x_label"])
     plotter.add_actor(body_frame["y_label"])
     plotter.add_actor(body_frame["z_label"])
+
+    # Trajectory of the Satellite
+    trajectory_points = []
+    trajectory_actor = None
     # Initialize the attitude
     Theta_ib = np.array([90, 45, 0])
     # Initialize the gif
     plotter.open_gif("Assignment 2/satellite_elliptic_animation.gif")
     # Extracting satellite position
     r_i_array = np.array(data_log["r_i"])
+
     for i in range(len(t)):
+
+        # Extracting the data
         time = t[i]
         r_i = r_i_array[i]
+
+        # Updating the satellite's position and orientation
         update_satellite_pose(satellite_mesh, r_i, Theta_ib, degrees=True)
         update_earth_orientation(earth_mesh, time)
         update_ecef_frame_orientation(ecef_frame, time)
         update_body_frame_pose(body_frame, r_i, Theta_ib, degrees=True)
+
+        # Update Trajectory:
+        trajectory_points.append(np.array(r_i))
+        if len(trajectory_points) > 1:
+            pts = np.array(trajectory_points)
+            n_pts = pts.shape[0]
+            cells = np.hstack([[n_pts], np.arange(n_pts)])
+            traj_poly = pv.PolyData(pts, lines=cells)
+            if trajectory_actor is not None:
+                plotter.remove_actor(trajectory_actor)
+            trajectory_actor = plotter.add_mesh(traj_poly, color="purple", line_width=3)
+
+        # Update the plotter
         plotter.write_frame()
 
     # Closing and finalizing the gif
