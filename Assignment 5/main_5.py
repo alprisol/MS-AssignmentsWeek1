@@ -118,7 +118,7 @@ def satellite_dynamic_loop(t, state, params):
 
     # 7 COMPUTE ATTITUDE DYNAMICS
     # 7a) Compute the torque
-    R_i_o = calculate_rotation_matrix_from_orbit_to_intertial(omega, theta, OMEGA, i)
+    R_i_o = calculate_rotation_matrix_from_orbit_to_inertial(omega, theta, OMEGA, i)
     q_io = calculate_quaternion_from_orbital_parameters(omega, OMEGA, i, theta)
     R_i_o_quaternion = calculate_rotation_matrix_from_quaternion(q_io)
     tau_d_b = pd_attitude_controller(q_ob, w_ob_b, q_od, w_od_d, kp, kd)
