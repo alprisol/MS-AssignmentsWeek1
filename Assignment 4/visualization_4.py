@@ -772,8 +772,8 @@ def animate_satellite(t, data_log, gif_name):
     # Extracting satellite position
     r_i_array = np.array(data_log["r_i"])
 
-    # plotter.view_vector([0, 0, -1])
-    # plotter.camera.position = (0, 0, 20 * earth_radius)
+    plotter.view_vector([0, 0, -1])
+    plotter.camera.position = (0, 0, 20 * earth_radius)
 
     # Initialize the gif
     plotter.open_gif(gif_name)

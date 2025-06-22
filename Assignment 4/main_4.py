@@ -195,7 +195,7 @@ if __name__ == "__main__":
     params = {
         "t_0": 0,  # Initial time (s)
         "ra": earth_radius + 10000,  # Apogee radius (km)
-        "rp": earth_radius + 800,  # Perigee radius (km)
+        "rp": earth_radius + 600,  # Perigee radius (km)
         "omega": np.radians(0),  # Argument of perigee (rad)
         "OMEGA": np.radians(0),  # Right ascension of ascending node (rad)
         "i": np.radians(0),  # Inclination (rad)

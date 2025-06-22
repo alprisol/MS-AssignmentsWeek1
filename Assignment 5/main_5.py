@@ -193,10 +193,10 @@ if __name__ == "__main__":
     params = {
         "t_0": 0,  # Initial time (s)
         "ra": earth_radius + 10000,  # Apogee radius (km)
-        "rp": earth_radius + 400,  # Perigee radius (km)
+        "rp": earth_radius + 600,  # Perigee radius (km)
         "omega": np.radians(0),  # Argument of perigee (rad)
         "OMEGA": np.radians(0),  # Right ascension of ascending node (rad)
-        "i": np.radians(75),  # Inclination (rad)
+        "i": np.radians(0),  # Inclination (rad)
         "mu": mu,  # Gravitational parameter (km^3/s^2)
         "J": np.eye(3),  # Inertia matrix (3x3)
         "tau_p_b": np.zeros(3),  # Disturbance torque (3,)
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     }
 
     # Initial conditions
-    theta = np.array([np.radians(30)])  # Initial true anomaly (rad)
+    theta = np.array([0.0])  # Initial true anomaly (rad)
     q_ob = np.array([0.0, 1.0, 0.0, 0.0])  # Initial quaternion
     w_ob_b = np.array([0.1, 0.2, -0.3])  # Initial angular velocity
     initial_state = np.concatenate((theta, q_ob, w_ob_b))
@@ -278,7 +278,7 @@ if __name__ == "__main__":
         print()
 
     # Choose static scene or animation
-    static = True
+    static = False
     if static:
         plotter = visualize_scene(data_log, time_index=100)
         plotter.show()
@@ -287,5 +287,5 @@ if __name__ == "__main__":
         animate_satellite(
             t,
             data_log,
-            f"Assignment 4/SatelliteAnimation_i{round(params['i'],2)}_omega{round(params['omega'],2)}_OMEGA{round(params['OMEGA'],2)}_q{np.round(params['q_od'],2)}_{round(t_span[1]/3600,2)}h_{n_steps}steps.gif",
+            f"Assignment 5/SatelliteAnimation_i{round(params['i'],2)}_omega{round(params['omega'],2)}_OMEGA{round(params['OMEGA'],2)}_q{np.round(params['q_od'],2)}_{round(t_span[1]/3600,2)}h_{n_steps}steps.gif",
         )

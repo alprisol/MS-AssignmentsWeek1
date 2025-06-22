@@ -676,10 +676,7 @@ def visualize_scene(
     )
 
     # --- Optional camera setup (you can adjust as you prefer) ---
-    # Example: place the camera far above the North Pole
-    # plotter.camera.position = (0, 0, 20 * earth_radius)
     plotter.camera.focal_point = (0, 0, 0)  # look at Earth's center
-    # plotter.camera.up = (0, 1, 0)
 
     # Return the plotter so user can call plotter.show() or do further manipulations
     return plotter

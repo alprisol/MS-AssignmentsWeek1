@@ -200,9 +200,21 @@ ax.scatter(0, 0, 0, color="orange", s=100, label="Earth center")
 ax.set_xlabel(r"$X$ (km)")
 ax.set_ylabel(r"$Y$ (km)")
 ax.set_zlabel(r"$Z$ (km)")
-ax.set_box_aspect([1, 1, 1])
-ax.legend()
 ax.set_title("Orbital Trajectory in 3D")
+
+
+def set_axes_equal(ax):
+    limits = np.array([ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d()])
+    spans = limits[:, 1] - limits[:, 0]
+    centers = np.mean(limits, axis=1)
+    radius = 0.5 * max(spans)
+    ax.set_xlim3d([centers[0] - radius, centers[0] + radius])
+    ax.set_ylim3d([centers[1] - radius, centers[1] + radius])
+    ax.set_zlim3d([centers[2] - radius, centers[2] + radius])
+
+
+set_axes_equal(ax)
+ax.legend()
 plt.savefig("Assignment 2/3D_Trajectory.png")
 plt.show()
 
